@@ -1,0 +1,23 @@
+{% extends 'chatterbox/base.html' %}
+
+{% block content %}
+
+	<p>Loaded</p>
+	
+	<form method="post">
+		{% csrf_token %}
+		{% for field in org_form %}
+			<p>
+				{{ field.label_tag }}
+				{{ field }}
+		{% endfor %}
+		<br>
+		<button type="submit">Update Model Settings</button>
+	</form>
+	
+	<h2>LDA Results</h2>
+	{% for value in lda_result_string %}
+		<p>{{ value }}</p>
+	{% endfor %}
+	
+{% endblock %}

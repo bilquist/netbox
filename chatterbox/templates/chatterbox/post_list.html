@@ -1,0 +1,39 @@
+{% extends 'chatterbox/base.html' %}
+
+{% block content %}
+	{# Section to add a new post #}
+	<section class="new-post">
+		<h1>New post</h1>
+		<form method="POST" class="post-form">{% csrf_token %}
+		<table>
+			{{ form.as_p }}
+			<tr colspan=2>
+				<button type="submit" class="save btn btn-default">Save</button>
+			</tr>
+		</table>
+		</form>
+	</section>
+	<section class="post-timeline">
+		<h1>Post Timeline</h1>
+		{% for post in posts %}
+			<div class="post">
+				<p>{{ post.text|linebreaksbr }}
+				<br />{{ post.published_date }}
+					<br />
+					{# Return an icon describing the mood of the post #}
+					{% if post.mood == '1' %} {# positive #}
+						<i class="material-icons">sentiment_very_satisfied</i>
+					{% elif post.mood == '2' %} {# negative #}
+						<i class="material-icons">sentiment_very_dissatisfied</i>
+					{% elif post.mood == '3' %} {# neutral #}
+						<i class="material-icons">sentiment_neutral</i>
+					{% elif post.mood == '4' %} {# ambivalent #}
+						<i class="material-icons">mood_bad</i>
+					{% else %} {# no mood #}
+						<i class="material-icons md-dark md-inactive">face</i>
+					{% endif %}
+				</p>
+			</div>
+		{% endfor %}
+	</section>
+{% endblock %}

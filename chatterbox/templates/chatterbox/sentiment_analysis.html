@@ -1,0 +1,327 @@
+{% extends 'chatterbox/base.html' %}
+
+{% block content %}
+
+	<!-- D3JS Formatting -->
+	<style>
+		.axis path,
+		.axis line {
+		  fill: none;
+		  stroke: #000;
+		  shape-rendering: crispEdges;
+		}
+		.x.axis path {
+		  fill:none;
+		  stroke: #000;
+		  shape-rendering: crispEdges;
+		}
+		.line {
+		  fill: none;
+		  stroke: steelblue;
+		  stroke-width: 2px;
+		}
+		
+	</style>
+	
+	<section id="chatter-chart" style="text-align:center;"></section>
+	<section id="sentiment-chart" style="text-align:center;"></section>
+	
+	
+	
+	<section class="sentiment-summary">
+		<p>Test paragraph</p>
+	</section>
+	
+
+	<script src="http://d3js.org/d3.v3.js"></script>
+	<!-- Import LoDash -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.js"></script>
+	<!-- End LoDash Import -->
+	<script>
+		
+		var jsondata = '{{ chatter_freq_data | escapejs }}'
+		var data = JSON.parse(jsondata);
+		
+		/*
+		var data = [
+			{"DateKey": "2017-06-25", "ChatterCount": 5}, 
+			{"DateKey": "2017-07-12", "ChatterCount": 1}, 
+			{"DateKey": "2017-07-15", "ChatterCount": 9}, 
+			{"DateKey": "2017-07-29", "ChatterCount": 2}];
+		*/
+		
+		var svgw = 800;
+		var svgh = Math.round(800 / 2, 0);
+		
+		var margin = {top: 20, right: 20, bottom: 150, left: 40 },
+			width = svgw - margin.left - margin.right,
+			height = svgh - margin.top - margin.bottom;
+		
+		// Parse the date/time
+		parseDate = d3.time.format("%Y-%m-%d").parse;
+		
+		var x = d3.time.scale().range([0, width]);
+		var y = d3.scale.linear().range([height, 0]);
+		
+		var xAxis = d3.svg.axis()
+			.scale(x)
+			.orient("bottom")
+			.tickFormat(d3.time.format("%Y-%m-%d"));
+			
+		var yAxis = d3.svg.axis()
+			.scale(y)
+			.orient("left")
+			
+		var line = d3.svg.line()
+			.x(function(d) { return x(d.date); })
+			.y(function(d) { return y(d.value); });
+			
+		var svg = d3.select("#chatter-chart").append("svg:svg")
+			.attr("width", width + margin.left + margin.right)
+			.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+			.attr("transform", "translate(" + margin.left + ", " + margin.top + ")");
+		
+		data.forEach(function(d) { 
+			d.date =  parseDate(d.DateKey);
+			d.value = +d.ChatterCount;
+		});
+		
+		function addDays(date, days) { 
+			var result = new Date(date);
+			result.setDate(result.getDate() + days);
+			return result;
+		}
+		
+		var minX = d3.min(data, function(d) { return d.date; });
+		var maxX = addDays(d3.max(data, function(d) { return d.date; }), 1);
+		var date_range = d3.time.days(minX, maxX, 1);
+		
+		var newData = date_range.map(function(dayBucket) {
+			var return1 = _.find(data, {date: dayBucket});
+			var return2 = {date: dayBucket, value: 0};
+			var rval = return1 || return2;
+			/*
+			console.log("return1");
+			console.log(return1);
+			console.log("return2");
+			console.log(return2);
+			console.log("rval");
+			console.log(rval);
+			*/
+			return return1 || return2;
+		});
+		
+		x.domain(d3.extent(data, function(d) { return d.date; })).ticks(d3.time.day);
+		y.domain([0, d3.max(newData, function(d) { return d.value; })]);
+		
+		
+		svg.append("g")
+			.attr("class", "x axis")
+			.attr("transform", "translate(0, " + height + ")")
+			.call(xAxis)
+			.selectAll("text")
+			.attr("transform", "rotate(-90)")
+			.attr("dx", "-.5em")
+			.attr("dy", "-.5em")
+			.style("text-anchor", "end");
+			
+		svg.append("g")
+			.attr("class", "y axis")
+			.call(yAxis)
+			.append("text")
+			.attr("transform", "rotate(-90)")
+			.attr("y", 6)
+			.attr("dy", "-2.5em")
+			.style("text-anchor", "end")
+			.text("Chatters per Day");
+		
+		svg.append("path")
+			.datum(newData)
+			.attr("class", "line")
+			.attr("d", line);
+		
+		// Title
+		var title_text = "Chatter volume timeline";
+		svg.append("text")
+			.attr("x", (svgw - title_text.length * 9) / 2)
+			.attr("y", - (margin.top / 3))
+			.text(title_text)
+			.style("font-size", 16);
+
+	</script>
+	
+	<script>
+		
+		var jsondata = '{{ chatter_sentiment_data | escapejs }}'
+		var data = JSON.parse(jsondata);
+		console.log("Sentiment Data:");
+		console.log(data);
+		
+		var moods = ["PositiveCount", "NegativeCount"];
+		var max_string_length = maxStringLengthOfArray(moods);
+		var total_string_length = totalStringLengthOfArray(moods);
+		
+		function maxStringLengthOfArray(a) {
+			max_length = 0;
+			for (var i = 0; i < a.length; i++) {
+				if (a[i].length > max_length) {
+					max_length = a[i].length;
+				}
+			}
+			return max_length;
+		}
+		
+		function totalStringLengthOfArray(a) { 
+			total_length = 0;
+			for (var i = 0; i < a.length; i++) {
+				total_length += a[i].length;
+			}
+			return total_length;
+		}
+		
+		function arrayLegendSpacings(a) {
+			running_total = 0
+			return_array = [running_total]
+			for (var i = 0; i < a.length - 1; i++) {
+				running_total += a[i].length;
+				return_array.push(running_total);
+			}
+			return return_array;
+		}
+		
+		var svgw = 400;
+		var svgh = Math.round(400, 0);
+		
+		var margin = {top: 40, right: 20, bottom: 100, left: 40 },
+			width = svgw - margin.left - margin.right,
+			height = svgh - margin.top - margin.bottom;
+		
+		var x = d3.scale.ordinal().rangeRoundBands([0, width]);
+		var y = d3.scale.linear().rangeRound([height, 0]);
+		var z = d3.scale.category10();
+		
+		var xAxis = d3.svg.axis()
+			.scale(x)
+			.orient("bottom")
+			
+		var yAxis = d3.svg.axis()
+			.scale(y)
+			.orient("left")
+			
+		var svg = d3.select("#sentiment-chart").append("svg:svg")
+			.attr("width", width + margin.left + margin.right)
+			.attr("height", height + margin.top + margin.bottom)
+			.append("g")
+			.attr("transform", "translate(" + margin.left + ", " + margin.top + ")");
+		
+		var layers = d3.layout.stack()(moods.map(function(c) {
+			return data.map(function(d) {
+				return {x: d.Mood , y: d[c]};
+			});
+		}));
+		
+		x.domain(layers[0].map(function(d) { return d.x; }));
+		y.domain([0, d3.max(layers[layers.length - 1], function(d) { return d.y0 + d.y; })]).nice();
+		
+		var layer = svg.selectAll(".layer")
+			.data(layers)
+			.enter()
+			.append("g")
+			.attr("class", "layer")
+			.style("fill", function(d, i) { return z(i); });
+		console.log("Layer:");
+		console.log(layer);
+			
+		layer.selectAll("rect")
+			.data(function(d) { return d; })
+			.enter()
+			.append("rect")
+			.attr("x", function(d) { return x(d.x); })
+			.attr("y", function(d) { return y(d.y + d.y0); })
+			.attr("height", function(d) { return y(d.y0) - y(d.y + d.y0); })
+			.attr("width", x.rangeBand() - 1);
+		
+		svg.append("g")
+			.attr("class", "axis axis--x")
+			.attr("transform", "translate(0, " + height + ")")
+			.call(xAxis);
+			/*
+			.selectAll("text")
+			.attr("transform", "rotate(-90)")
+			.attr("dx", "-.5em")
+			.attr("dy", "-.5em")
+			.style("text-anchor", "end");
+			*/
+			
+		svg.append("g")
+			.attr("class", "axis axis--y")
+			.call(yAxis);
+			/*
+			.append("text")
+			.attr("transform", "rotate(-90)")
+			.attr("y", 6)
+			.attr("dy", "-2.5em")
+			.style("text-anchor", "end")
+			.text("Chatters per Day");
+			*/
+			
+		var legend_padding = 5;
+		var char_spacing = 8;
+		var legend_offset = svgw - totalStringLengthOfArray(moods) * char_spacing - moods.length * legend_padding;
+		var legend_start = (svgw - legend_offset) / 4;
+		var mood_spacing = arrayLegendSpacings(moods);
+		
+		// Legend
+		var legend = svg.append("g")
+			.attr("class", "legend")
+			.attr("height", 100)
+			.attr("width", 100)
+			.attr("transform", "translate(0, " + height + ")");
+			
+		legend.selectAll("rect")
+			.data(moods)
+			.enter()
+			.append("rect")
+			.attr("x", function(d, i) {
+				l = legend_start + arrayLegendSpacings(moods)[i] * char_spacing + legend_padding * i;
+				console.log("l[" + i + "]:" + l);
+				return l - 10;
+			})
+			.attr("y", 40)
+			.attr("width", 10)
+			.attr("height", 10)
+			.style("fill", function(d, i) { return z(i); });
+		
+		legend.selectAll("text")
+			.data(moods)
+			.enter()
+			.append("text")
+			.attr("x", function(d, i) {
+				l = legend_start + arrayLegendSpacings(moods)[i] * char_spacing + legend_padding * i + 2;
+				console.log("l[" + i + "]:" + l);
+				return l;
+			})
+			.attr("y", 50)
+			.text(function(d, i) { return moods[i]; });
+		
+		// Title
+		var title_text = "User submitted Chatters by mood";
+		var title_text2 = "segmented by sentiment classification";
+		svg.append("text")
+			.attr("x", (svgw - title_text.length * char_spacing) / 2)
+			.attr("y", 0 - (margin.top * 2 / 3))
+			.text(title_text)
+			.style("font-size", 16);
+
+		svg.append("text")
+			.attr("x", (svgw - title_text2.length * char_spacing * 0.90) / 2)
+			.attr("y", 0 - (margin.top / 3))
+			.text(title_text2)
+			.style("font-size", 16);
+		
+
+	</script>
+	
+	
+{% endblock %}

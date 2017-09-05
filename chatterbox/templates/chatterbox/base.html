@@ -1,0 +1,39 @@
+{% load staticfiles %}
+<html>
+	<head>
+		<title>Chatterbox</title>
+		<!-- Imports -->
+		<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+		<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+		<link href="https://fonts.googleapis.com/css?family=Libre+Franklin" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"> {# sentiment icons #}
+		<link rel="stylesheet" href="{% static 'css/chatterbox.css' %}">
+	</head>
+	<body>
+		<div class="page-header">
+			{% if user.is_authenticated %}
+				<p class="top-menu">Hello, {{ user.username }}
+					<br>
+					<small><a href="{% url 'post_list' %}">Posts</a></small>
+					<small><a href="{% url 'sentiment_analysis' %}">Sentiment Analysis</a></small>
+					<small><a href="{% url 'lda_analysis' %}">LDA Analysis</a></small>
+					<small><a href="{% url 'update_profile' %}">Profile</a></small>
+					<small><a href="{% url 'logout' %}">Logout</a></small>
+					
+				</p>
+			{% else %}
+				<a href="{% url 'login' %}" class="top-menu"><span class="glyphicon glyphicon-lock"></span></a>
+			{% endif %}
+			<h1><a href="/">Chatterbox</a></h1>
+		</div>
+		<div class="content container">
+			<div class="row">
+				<div class="col-md-8">
+					{% block content %}
+					{% endblock %}
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
